@@ -6,7 +6,7 @@
 /*   By: yassinefahfouhi <yassinefahfouhi@studen    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 19:06:27 by yassinefahf       #+#    #+#             */
-/*   Updated: 2025/02/03 13:01:16 by yassinefahf      ###   ########.fr       */
+/*   Updated: 2025/02/03 13:39:18 by yassinefahf      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,27 +17,27 @@ void exit_error(char *s)
 	perror(s);
 	exit(EXIT_FAILURE);
 }
-void fill_args_for_exec(char **args, char *dest, char **split, char av)
+void fill_args_for_exec(char **args, char *dest, char **split, char *av)
 {
 	args[0] = dest;
 	args[1] = split[1];
 	args[2] = av;
 	args[3] = NULL;
 }
-void fills_env_for_exec(char **env, char *dest, char **split, char av)
+void fill_env_for_exec(char **env)
 {
 	env[0] = "PATH=/bin :/usr/bin";
 	env[1] = NULL;
 }
-void exec_process(char **av, char *dest, char **split)
+void exec_process(char *av, char *dest, char **split)
 {
 	char **args;
 	char **env;
 
 	args = malloc(4 * sizeof(char *));
 	env = malloc(4 * sizeof(char *));
-	fill_args_for_exec(args, dest, split, av[1]);
-	fill_env_for_exec(env, dest, split, av[4]);
+	fill_args_for_exec(args, dest, split, av);
+	fill_env_for_exec(env);
 	if (execve(dest, args, env) == -1)
 		exit_error("execve");
 }
@@ -58,7 +58,26 @@ void child_handle(int *fd, char **av)
 		exit_error("open");
 	dup2(fd_o, STDIN_FILENO);
 	dup2(fd[1], STDOUT_FILENO);
-	exec_process(av, dest, split);
+	exec_process(av[1], dest, split);
+}
+void main_handle(int *fd, char **av)
+{
+	int fd_o;
+	char **split;
+	char *dest;
+
+	fd_o = open(av[4], O_RDONLY, O_WRONLY);
+	if (fd_o == -1)
+		exit_error("open");
+	split = ft_split(av[3], ' ');
+	if (!split[0])
+		return;
+	dest = ft_strjoin("/bin/", split[0]);
+	if (!dest)
+		return;
+	dup2(fd[0], STDIN_FILENO);
+	dup2(fd_o, STDOUT_FILENO);
+	exec_process(av[4], dest, split);
 }
 int main(int ac, char **av)
 {
@@ -74,8 +93,8 @@ int main(int ac, char **av)
 			exit_error("fork");
 		if (pid == 0)
 			child_handle(fd, av);
-		// else
-		// main_handle(fd, av);
+		else
+			main_handle(fd, av);
 		waitpid(pid, NULL, 0);
 	}
 	else
