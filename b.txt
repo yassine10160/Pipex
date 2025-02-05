@@ -1,0 +1,11 @@
+Makefile
+a.txt
+b.txt
+ft_split.c
+ft_strjoin.c
+ft_strlen.c
+pipex
+pipex.c
+pipex.h
+t.c
+test2.c

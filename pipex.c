@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yassinefahfouhi <yassinefahfouhi@studen    +#+  +:+       +#+        */
+/*   By: yafahfou <yafahfou@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 19:06:27 by yassinefahf       #+#    #+#             */
-/*   Updated: 2025/02/03 13:39:18 by yassinefahf      ###   ########.fr       */
+/*   Updated: 2025/02/05 15:50:18 by yafahfou         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,9 @@ void exit_error(char *s)
 	perror(s);
 	exit(EXIT_FAILURE);
 }
-void fill_args_for_exec(char **args, char *dest, char **split, char *av)
+void fill_args_for_exec(char **args, char *path, char **split, char *av)
 {
-	args[0] = dest;
+	args[0] = path;
 	args[1] = split[1];
 	args[2] = av;
 	args[3] = NULL;
@@ -29,56 +29,73 @@ void fill_env_for_exec(char **env)
 	env[0] = "PATH=/bin :/usr/bin";
 	env[1] = NULL;
 }
-void exec_process(char *av, char *dest, char **split)
+void exec_process(char *av, char *path, char **split)
 {
 	char **args;
 	char **env;
 
 	args = malloc(4 * sizeof(char *));
-	env = malloc(4 * sizeof(char *));
-	fill_args_for_exec(args, dest, split, av);
+	env = malloc(2 * sizeof(char *));
+	fill_args_for_exec(args, path, split, av);
 	fill_env_for_exec(env);
-	if (execve(dest, args, env) == -1)
+
+	if (execve(path, args , env) == -1)
 		exit_error("execve");
 }
-void child_handle(int *fd, char **av)
+void child_handle(int fd[2], char **av, int infile)
 {
-	int fd_o;
 	char **split;
-	char *dest;
+	char *path;
 
 	split = ft_split(av[2], ' ');
 	if (!split[0])
 		return;
-	dest = ft_strjoin("/bin/", split[0]);
-	if (!dest)
+	path = ft_strjoin("/bin/", split[0]);
+	if (!path)
 		return;
-	fd_o = open(av[1], O_RDONLY, O_WRONLY);
-	if (fd_o == -1)
-		exit_error("open");
-	dup2(fd_o, STDIN_FILENO);
+	// fd_o = open(av[1], O_RDONLY);
+	// if (fd_o == -1)
+		// exit_error("open");
+	dup2(infile, STDIN_FILENO);
 	dup2(fd[1], STDOUT_FILENO);
-	exec_process(av[1], dest, split);
+	printf("ici\n");
+	close(fd[1]);
+	exec_process(av[1], path, split);
 }
+
 void main_handle(int *fd, char **av)
 {
 	int fd_o;
 	char **split;
-	char *dest;
+	char *path;
+	int	pid;
 
-	fd_o = open(av[4], O_RDONLY, O_WRONLY);
+	fd_o = open(av[4], O_WRONLY | O_TRUNC | O_CREAT, 0777);
+	// printf("open value: %d\n", fd_o);
 	if (fd_o == -1)
 		exit_error("open");
 	split = ft_split(av[3], ' ');
 	if (!split[0])
 		return;
-	dest = ft_strjoin("/bin/", split[0]);
-	if (!dest)
+	path = ft_strjoin("/bin/", split[0]);
+	if (!path)
 		return;
 	dup2(fd[0], STDIN_FILENO);
 	dup2(fd_o, STDOUT_FILENO);
-	exec_process(av[4], dest, split);
+	pid = fork();
+	if (pid == -1)
+		perror("fork");
+	if (pid == 0)
+		exec_process(av[4], path, split);
+	else
+	{
+		waitpid(pid, NULL, 0);
+		close(fd[1]);
+		close(fd[0]);
+		close(fd_o);
+	}
 }
+
 int main(int ac, char **av)
 {
 	int fd[2];
@@ -92,10 +109,20 @@ int main(int ac, char **av)
 		if (pid == -1)
 			exit_error("fork");
 		if (pid == 0)
-			child_handle(fd, av);
+		{
+			int	infile;
+			
+			infile = open(av[1], O_RDONLY);
+			if (infile == -1)
+				exit_error("open");
+			child_handle(fd, av, infile);
+			close(infile);
+		}
 		else
+		{
+			waitpid(pid, NULL, 0);
 			main_handle(fd, av);
-		waitpid(pid, NULL, 0);
+		}
 	}
 	else
 		write(1, "argument error\n", 15);
