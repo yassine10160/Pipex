@@ -2,7 +2,7 @@ NAME=pipex
 CC=cc
 FLAGS=-Wall -Wextra -Werror
 OBJDIR = .obj
-SRCS=pipex.c ft_strjoin.c ft_split.c ft_strlen.c
+SRCS=pipex.c ft_strjoin.c ft_split.c ft_strlen.c ft_strncmp.c
 HEADERS=pipex.h
 OBJS=$(addprefix $(OBJDIR)/, $(SRCS:.c=.o))
 all: $(NAME)
