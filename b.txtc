@@ -1,0 +1,14 @@
+total 64
+-rw-r--r-- 1 yafahfou 2024_lyon     3 Feb  3 17:48 a.txt
+-rw-r--r-- 1 yafahfou 2024_lyon   673 Mar  7 13:34 b.txt
+-rwxr-xr-x 1 yafahfou 2024_lyon     0 Mar  7 17:53 b.txtc
+-rw-r--r-- 1 yafahfou 2024_lyon  2217 Feb  3 17:44 ft_split.c
+-rw-r--r-- 1 yafahfou 2024_lyon  1316 Feb  3 17:44 ft_strjoin.c
+-rw-r--r-- 1 yafahfou 2024_lyon  1006 Feb  3 17:44 ft_strlen.c
+-rw-r--r-- 1 yafahfou 2024_lyon  1287 Mar  6 18:24 ft_strncmp.c
+-rw-r--r-- 1 yafahfou 2024_lyon  1417 Mar  7 13:14 get_path.c
+-rw-r--r-- 1 yafahfou 2024_lyon   452 Mar  7 17:51 Makefile
+-rwxr-xr-x 1 yafahfou 2024_lyon 17200 Mar  7 17:53 pipex
+-rw-r--r-- 1 yafahfou 2024_lyon  2823 Mar  7 17:53 pipex2.c
+-rw-r--r-- 1 yafahfou 2024_lyon  3081 Mar  7 13:34 pipex.c
+-rw-r--r-- 1 yafahfou 2024_lyon  1515 Mar  7 17:51 pipex.h

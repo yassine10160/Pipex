@@ -5,122 +5,137 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: yafahfou <yafahfou@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/01/29 19:06:27 by yassinefahf       #+#    #+#             */
-/*   Updated: 2025/03/06 18:52:50 by yafahfou         ###   ########.fr       */
+/*   Created: 2025/03/07 14:13:28 by yafahfou          #+#    #+#             */
+/*   Updated: 2025/03/07 18:25:23 by yafahfou         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void exit_error(char *s)
+void	exit_error(char *s)
 {
 	perror(s);
 	exit(EXIT_FAILURE);
 }
-// void fill_args_for_exec(char **args, char *path, char **split, char *av)
-// {
-// 	args[0] = path;
-// 	args[1] = split[1];
-// 	args[2] = av;
-// 	args[3] = NULL;
-// }
-// void fill_env_for_exec(char **env)
-// {
-// 	env[0] = "PATH=/bin :/usr/bin";
-// 	env[1] = NULL;
-// }
+
 void exec_process(char **env, char *path, char **split)
 {
-	// fill_args_for_exec(args, path, split, av);
-	fill_env_for_exec(env);
 	if (execve(path, split, env) == -1)
 		exit_error("execve");
 }
-void child_handle(int fd[2], char **av, int infile, char **env)
+
+int	safe_open(char *file, int type)
 {
-	char **split;
-	char *path;
+	int	fd;
 
-	close(fd[0]);
-	split = ft_split(av[2], ' ');
-	if (!split[0])
-		return;
-	//check si le path existe
-	path = ft_strjoin("/bin/", split[0]);
-	if (!path)
-		return;
-	dup2(infile, STDIN_FILENO);
-	dup2(fd[1], STDOUT_FILENO);
-	close(fd[1]);
-	exec_process(env, path, split);
-}
-
-void main_handle(int *fd, char **av, char **env)
-{
-	int 	fd_o;
-	char 	**split;
-	char 	*path;
-	pid_t	pid;
-
-	fd_o = open(av[4], O_WRONLY | O_TRUNC | O_CREAT, 0777);
-	if (fd_o == -1)
-		exit_error("open");
-	split = ft_split(av[3], ' ');
-	if (!split[0])
-		return;
-	path = ft_strjoin("/bin/", split[0]);
-	if (!path)
-		return;
-	dup2(fd[0], STDIN_FILENO);
-	dup2(fd_o, STDOUT_FILENO);
-	pid = fork();
-	if (pid == -1)
-		perror("fork");
-	if (pid == 0)
-		exec_process(env, path, split);
+	if (type == INFILE)
+	{
+		if ((fd = open(file, O_RDONLY)) == -1)
+			exit_error("open");
+	}
 	else
 	{
-		waitpid(pid, NULL, 0);
-		close(fd[1]);
-		close(fd[0]);
-		close(fd_o);
+		if ((fd = open(file, O_WRONLY | O_TRUNC | O_CREAT, 0777)) == -1)
+			exit_error("open");
+	}
+	return (fd);
+}
+
+void	right_duplicate(t_process *process, int mode)
+{
+	if (mode == CHILD)
+	{
+		close(process->fd[0]);
+		dup2(process->file, STDIN_FILENO);
+		dup2(process->fd[1], STDOUT_FILENO);
+		close(process->fd[1]);
+		close(process->file);
+	}
+	else
+	{
+		dup2(process->fd[0], STDIN_FILENO);
+		dup2(process->file, STDOUT_FILENO);
+		close(process->fd[1]);
+		close(process->file);
 	}
 }
 
-void	ft_putstr_fd(char *str, int fd)
+void	free_tab_str(char **s)
 {
-	write(fd, str, ft_strlen(str));
+	int	i;
+
+	i = 0;
+	while (s[i])
+	{
+		free(s[i]);
+		i++;
+	}
 }
 
-int main(int ac, char **av, char **env)
+void	process_handle(t_process *process, char **env, char *av, int mode)
 {
-	int fd[2];
-	pid_t pid;
-	int	infile;
+	char	**split;
+	char	*path;
 
-	infile = -1;
+	split = ft_split(av, ' ');
+	if (!split[0])
+	{
+		free_tab_str(split);
+		return ;
+	}
+	path = get_right_path(env, split[0]);
+	if (!path)
+	{
+		free_tab_str(split);
+		return;
+	}
+	right_duplicate(process, mode);
+	exec_process(env, path, split);
+}
+
+void	close_files(t_process *process)
+{
+	close(process->fd[0]);
+	close(process->fd[1]);
+	close(process->file);
+}
+
+void	wait_process(t_process *process)
+{
+	waitpid(process->pid[1], NULL, 0);
+	waitpid(process->pid[0], NULL, 0);
+}
+
+void	main_handle(t_process *process, char **av, char **env)
+{
+	if ((process->pid[0] = fork()) == -1)
+			exit_error("fork");
+		if (process->pid[0] == 0)
+		{
+			process->file = safe_open(av[1], INFILE);
+			process_handle(process, env, av[2], CHILD);
+		}
+		if ((process->pid[1] = fork()) == -1)
+			exit_error("fork");
+		if (process->pid[1] == 0)
+		{
+			process->file = safe_open(av[4], OUTFILE);
+			process_handle(process, env, av[3], PARENT);
+		}
+		close_files(process);
+		wait_process(process);
+}
+
+int	main(int ac, char **av, char **env)
+{
+	t_process	process;
+
+	process.file = -1;
 	if (ac == 5)
 	{
-		if (pipe(fd) == -1)
+		if (pipe(process.fd) == -1)
 			exit_error("pipe");
-		pid = fork();
-		if (pid == -1)
-			exit_error("fork");
-		if (pid == 0)
-		{
-			infile = open(av[1], O_RDONLY);
-			if (infile == -1)
-				exit_error("open");
-			// close(fd[0]);
-			child_handle(fd, av, infile, env);
-			// ft_putstr_fd
-			close(infile);
-		}
-		else
-		{
-			waitpid(pid, NULL, 0);
-			main_handle(fd, av, env);
-		}
+		main_handle(&process, av, env);
 	}
 	else
 		write(1, "argument error\n", 15);
